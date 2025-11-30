@@ -65,11 +65,19 @@ class LLMStructuredResponse(BaseModel):
 # --------------------------------------------------------------------
 
 def _s3_client():
+    """
+    MinIO S3 client.
+
+    Prefers S3_* vars, falls back to MINIO_ROOT_*.
+    """
+    access_key = getattr(settings, "S3_ACCESS_KEY", None) or settings.MINIO_ROOT_USER
+    secret_key = getattr(settings, "S3_SECRET_KEY", None) or settings.MINIO_ROOT_PASSWORD
+
     return boto3.client(
         "s3",
-        endpoint_url=settings.S3_ENDPOINT or settings.MINIO_ENDPOINT,
-        aws_access_key_id=settings.S3_ACCESS_KEY or settings.MINIO_ROOT_USER,
-        aws_secret_access_key=settings.S3_SECRET_KEY or settings.MINIO_ROOT_PASSWORD,
+        endpoint_url=settings.MINIO_ENDPOINT,
+        aws_access_key_id=access_key,
+        aws_secret_access_key=secret_key,
     )
 
 def build_response_schema(fields: List[FieldSpec]) -> dict:
