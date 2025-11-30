@@ -161,7 +161,8 @@ def call_structured_llm(
 
     schema = build_response_schema(fields)
 
-    parts: List[types.Part] = [types.Part.from_text(prompt)]
+    # build parts
+    parts: List[types.Part] = [types.Part(text=prompt)]
 
     if image_bytes is not None:
         mt = image_mime or "image/png"
