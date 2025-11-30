@@ -34,27 +34,39 @@ services:
       - app_net
 
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: llm_app_backend
-    environment:
-      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
-      JWT_SECRET: ${JWT_SECRET}
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
-      GEMINI_MODEL_NAME: ${GEMINI_MODEL_NAME}
-      S3_ENDPOINT: ${MINIO_ENDPOINT}
-      S3_BUCKET: ${MINIO_BUCKET}
-      S3_ACCESS_KEY: ${MINIO_ROOT_USER}
-      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+  build:
+    context: ./backend
+    dockerfile: Dockerfile
+  container_name: llm_app_backend
+  environment:
+    # must match Settings.SQLALCHEMY_DATABASE_URL
+    SQLALCHEMY_DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
 
-    depends_on:
-      - db
-      - minio
-    ports:
-      - "${BACKEND_PORT}:8000"
-    networks:
-      - app_net
+    # must match Settings.JWT_SECRET_KEY
+    JWT_SECRET_KEY: ${JWT_SECRET_KEY:-super-secret-change-me}
+
+    # Gemini
+    GEMINI_API_KEY: ${GEMINI_API_KEY}
+    GEMINI_MODEL_NAME: ${GEMINI_MODEL_NAME:-gemini-2.0-flash}
+
+    # MinIO / S3 – keep both MINIO_* + S3_* wired so all code paths are happy
+    MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://minio:9000}
+    MINIO_BUCKET: ${MINIO_BUCKET:-llm-images}
+    MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+    MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+
+    S3_ENDPOINT: ${MINIO_ENDPOINT:-http://minio:9000}
+    S3_BUCKET: ${MINIO_BUCKET:-llm-images}
+    S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+    S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+  depends_on:
+    - db
+    - minio
+  ports:
+    - "${BACKEND_PORT}:8000"
+  networks:
+    - app_net
+
 
   frontend:
     build:
