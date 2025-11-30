@@ -31,7 +31,8 @@ class Settings(BaseSettings):
     S3_SECRET_KEY: str | None = None
 
     # --- LLM ---
-    OPENAI_API_KEY: str | None = None
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL_NAME: str = "gemini-2.0-flash"
 
     class Config:
         # used only for local dev; in docker, real env vars override these
