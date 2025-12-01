@@ -248,19 +248,7 @@ export default function MainPage() {
                   color: "#6b7280",
                 }}
               >
-                Stored image id: <code>{imageId}</code>
-              </div>
-            )}
-            {imageUrl && (
-              <div
-                style={{
-                  marginTop: 2,
-                  fontSize: 11,
-                  color: "#9ca3af",
-                  wordBreak: "break-all",
-                }}
-              >
-                Internal URL: {imageUrl}
+                image uploaded
               </div>
             )}
           </div>
