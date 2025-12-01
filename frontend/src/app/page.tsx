@@ -10,18 +10,22 @@ export default function MainPage() {
   const router = useRouter();
   const [token, setToken] = useState<string | null>(null);
 
-  const [prompt, setPrompt] = useState("Who invented the Turing machine?");
+  const [prompt, setPrompt] = useState(
+    "Who invented turing machine? return byear and fullname.\nAlso, return what is the number on the shirt the person is wearing on the picture."
+  );
   const [fields, setFields] = useState<FieldRow[]>([
-    { id: 1, name: "name", type: "string" },
-    { id: 2, name: "surname", type: "string" },
-    { id: 3, name: "inventor_birth_year", type: "number" },
+    { id: 1, name: "inventorFullName", type: "string" },
+    { id: 2, name: "inventorBirthYear", type: "number" },
+    { id: 3, name: "numberOnTheShirt", type: "number" },
   ]);
 
   const [file, setFile] = useState<File | null>(null);
   const [imageId, setImageId] = useState<number | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
 
-  const [result, setResult] = useState<Record<string, string | number | null> | null>(null);
+  const [result, setResult] = useState<
+    Record<string, string | number | null> | null
+  >(null);
   const [fromCache, setFromCache] = useState(false);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -29,7 +33,8 @@ export default function MainPage() {
 
   // load token or redirect to /login
   useEffect(() => {
-    const t = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const t =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (!t) {
       router.push("/login");
     } else {
@@ -113,55 +118,167 @@ export default function MainPage() {
   }
 
   return (
-    <main style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
-      <section style={{ flex: 3, minWidth: 0 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
-          <h1 style={{ fontSize: 22, margin: 0 }}>Prompt & Structure</h1>
+    <main
+      style={{
+        display: "flex",
+        justifyContent: "center",
+      }}
+    >
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 760,
+          background: "#ffffff",
+          borderRadius: 8,
+          boxShadow: "0 10px 30px rgba(15, 23, 42, 0.12)",
+          padding: 24,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            marginBottom: 16,
+            alignItems: "center",
+          }}
+        >
+          <h1
+            style={{
+              fontSize: 24,
+              margin: 0,
+              fontWeight: 600,
+            }}
+          >
+            Example User Experience
+          </h1>
           <button
             type="button"
             onClick={logout}
             style={{
-              padding: "4px 8px",
-              borderRadius: 6,
-              border: "1px solid #1f2937",
-              background: "transparent",
-              color: "#e5e5e5",
-              cursor: "pointer",
+              padding: "4px 10px",
+              borderRadius: 4,
+              border: "1px solid #d1d5db",
+              background: "#ffffff",
               fontSize: 12,
+              cursor: "pointer",
             }}
           >
             Logout
           </button>
         </div>
 
-        <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <form
+          onSubmit={onSubmit}
+          style={{ display: "flex", flexDirection: "column", gap: 20 }}
+        >
+          {/* Prompt */}
           <div>
-            <label style={{ fontSize: 13, opacity: 0.8 }}>Prompt</label>
+            <label
+              style={{
+                fontSize: 14,
+                fontWeight: 500,
+                display: "block",
+                marginBottom: 6,
+              }}
+            >
+              Prompt
+            </label>
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               rows={4}
               style={{
                 width: "100%",
-                marginTop: 4,
-                padding: 8,
-                borderRadius: 6,
-                border: "1px solid #1f2937",
-                background: "#020617",
-                color: "#e5e5e5",
+                padding: 10,
+                borderRadius: 4,
+                border: "1px solid #d1d5db",
+                fontSize: 14,
                 resize: "vertical",
               }}
             />
           </div>
 
+          {/* Image upload */}
           <div>
-            <label style={{ fontSize: 13, opacity: 0.8 }}>Output fields</label>
+            <label
+              style={{
+                fontSize: 14,
+                fontWeight: 500,
+                display: "block",
+                marginBottom: 6,
+              }}
+            >
+              Image (optional)
+            </label>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const f = e.target.files?.[0] ?? null;
+                  setFile(f);
+                  setImageId(null);
+                  setImageUrl(null);
+                }}
+              />
+              <button
+                type="button"
+                disabled={!file || !token || uploading}
+                onClick={onUploadImage}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: 4,
+                  border: "none",
+                  background: "#3b82f6",
+                  color: "#ffffff",
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: !file || uploading ? "default" : "pointer",
+                  opacity: !file || uploading ? 0.6 : 1,
+                }}
+              >
+                {uploading ? "Uploading…" : "Upload"}
+              </button>
+            </div>
+            {imageId && (
+              <div
+                style={{
+                  marginTop: 4,
+                  fontSize: 12,
+                  color: "#6b7280",
+                }}
+              >
+                Stored image id: <code>{imageId}</code>
+              </div>
+            )}
+            {imageUrl && (
+              <div
+                style={{
+                  marginTop: 2,
+                  fontSize: 11,
+                  color: "#9ca3af",
+                  wordBreak: "break-all",
+                }}
+              >
+                Internal URL: {imageUrl}
+              </div>
+            )}
+          </div>
+
+          {/* Response structure */}
+          <div>
+            <label
+              style={{
+                fontSize: 14,
+                fontWeight: 500,
+                display: "block",
+                marginBottom: 6,
+              }}
+            >
+              Response Structure
+            </label>
             <div
               style={{
-                marginTop: 4,
-                borderRadius: 6,
-                border: "1px solid #1f2937",
-                padding: 8,
                 display: "flex",
                 flexDirection: "column",
                 gap: 8,
@@ -177,226 +294,164 @@ export default function MainPage() {
                   }}
                 >
                   <input
-                    placeholder="field_name"
+                    placeholder="fieldName"
                     value={f.name}
-                    onChange={(e) => updateField(f.id, { name: e.target.value })}
+                    onChange={(e) =>
+                      updateField(f.id, { name: e.target.value })
+                    }
                     style={{
                       flex: 2,
                       padding: "6px 8px",
                       borderRadius: 4,
-                      border: "1px solid #1f2937",
-                      background: "#020617",
-                      color: "#e5e5e5",
-                      fontSize: 13,
+                      border: "1px solid #d1d5db",
+                      fontSize: 14,
                     }}
                   />
                   <select
                     value={f.type}
                     onChange={(e) =>
-                      updateField(f.id, { type: e.target.value as FieldRow["type"] })
+                      updateField(f.id, {
+                        type: e.target.value as FieldRow["type"],
+                      })
                     }
                     style={{
                       flex: 1,
                       padding: "6px 8px",
                       borderRadius: 4,
-                      border: "1px solid #1f2937",
-                      background: "#020617",
-                      color: "#e5e5e5",
-                      fontSize: 13,
+                      border: "1px solid #d1d5db",
+                      fontSize: 14,
+                      background: "#ffffff",
                     }}
                   >
-                    <option value="string">string</option>
-                    <option value="number">number</option>
+                    <option value="string">String</option>
+                    <option value="number">Number</option>
                   </select>
                   <button
                     type="button"
                     onClick={() => removeField(f.id)}
                     style={{
-                      padding: "4px 8px",
+                      padding: "6px 10px",
                       borderRadius: 4,
-                      border: "1px solid #450a0a",
-                      background: "transparent",
-                      color: "#fecaca",
-                      fontSize: 11,
+                      border: "none",
+                      background: "#ef4444",
+                      color: "#ffffff",
+                      fontSize: 12,
                       cursor: "pointer",
                     }}
                   >
-                    ✕
+                    ×
                   </button>
                 </div>
               ))}
+
               <button
                 type="button"
                 onClick={addField}
                 style={{
                   marginTop: 4,
-                  padding: "4px 8px",
+                  padding: "6px 12px",
                   borderRadius: 4,
-                  border: "1px dashed #4b5563",
-                  background: "transparent",
-                  color: "#9ca3af",
-                  fontSize: 12,
+                  border: "none",
+                  background: "#2563eb",
+                  color: "#ffffff",
+                  fontSize: 14,
+                  fontWeight: 500,
                   cursor: "pointer",
                   alignSelf: "flex-start",
                 }}
               >
-                + Add field
+                + Add Field
               </button>
             </div>
           </div>
 
-          <div>
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                padding: "8px 14px",
-                borderRadius: 6,
-                border: "none",
-                background: "#22c55e",
-                color: "#020617",
-                fontWeight: 600,
-                cursor: loading ? "default" : "pointer",
-                opacity: loading ? 0.7 : 1,
-              }}
-            >
-              {loading ? "Asking LLM…" : "Run"}
-            </button>
-          </div>
+          {/* Submit */}
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              marginTop: 8,
+              padding: "10px 14px",
+              borderRadius: 4,
+              border: "none",
+              background: "#22c55e",
+              color: "#ffffff",
+              fontWeight: 600,
+              fontSize: 15,
+              cursor: loading ? "default" : "pointer",
+              opacity: loading ? 0.8 : 1,
+            }}
+          >
+            {loading ? "Submitting…" : "Submit"}
+          </button>
 
           {error && (
-            <div style={{ color: "#f97373", fontSize: 13 }}>
+            <div
+              style={{
+                marginTop: 4,
+                color: "#b91c1c",
+                fontSize: 13,
+              }}
+            >
               {error}
             </div>
           )}
         </form>
-      </section>
 
-      <section style={{ flex: 2, minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
+        {/* Structured Output */}
         <div
           style={{
-            borderRadius: 6,
-            border: "1px solid #1f2937",
-            padding: 10,
+            marginTop: 24,
+            padding: 16,
+            borderRadius: 4,
+            background: "#f9fafb",
+            border: "1px solid #e5e7eb",
           }}
         >
-          <div style={{ fontSize: 13, marginBottom: 8, opacity: 0.8 }}>Image</div>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => {
-              const f = e.target.files?.[0] ?? null;
-              setFile(f);
-              setImageId(null);
-              setImageUrl(null);
-            }}
-          />
-          <button
-            type="button"
-            disabled={!file || !token || uploading}
-            onClick={onUploadImage}
+          <div
             style={{
-              marginTop: 8,
-              padding: "6px 10px",
-              borderRadius: 6,
-              border: "none",
-              background: "#3b82f6",
-              color: "#020617",
-              fontSize: 13,
-              cursor: !file || uploading ? "default" : "pointer",
-              opacity: !file || uploading ? 0.6 : 1,
+              fontWeight: 600,
+              marginBottom: 8,
+              fontSize: 14,
             }}
           >
-            {uploading ? "Uploading…" : "Upload to MinIO"}
-          </button>
-          {imageId && (
-            <div style={{ marginTop: 6, fontSize: 12, opacity: 0.8 }}>
-              Image stored with id <code>{imageId}</code>
-            </div>
-          )}
-          {imageUrl && (
-            <div style={{ marginTop: 8 }}>
-              <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 4 }}>Preview</div>
-              {/* imageUrl is internal (http://minio:9000/...), not reachable from browser. 
-                  Just show that it's set, don't try to render <img src>. */}
-              <code style={{ fontSize: 11, wordBreak: "break-all" }}>{imageUrl}</code>
-            </div>
-          )}
-        </div>
-
-        <div
-          style={{
-            borderRadius: 6,
-            border: "1px solid #1f2937",
-            padding: 10,
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-            <div style={{ fontSize: 13, opacity: 0.8 }}>Structured response</div>
+            Structured Output:
             {result && (
-              <div style={{ fontSize: 11, opacity: 0.7 }}>
-                {fromCache ? "from cache" : "fresh"}
-              </div>
+              <span
+                style={{
+                  marginLeft: 8,
+                  fontWeight: 400,
+                  fontSize: 11,
+                  color: "#6b7280",
+                }}
+              >
+                {fromCache ? "(from cache)" : "(fresh)"}
+              </span>
             )}
           </div>
-          {!result && <div style={{ fontSize: 12, opacity: 0.6 }}>No response yet.</div>}
+
+          {!result && (
+            <div style={{ fontSize: 13, color: "#6b7280" }}>
+              No response yet. Submit the form to see structured output here.
+            </div>
+          )}
+
           {result && (
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                fontSize: 13,
-              }}
-            >
-              <thead>
-                <tr>
-                  <th
-                    style={{
-                      textAlign: "left",
-                      borderBottom: "1px solid #1f2937",
-                      padding: "4px 2px",
-                    }}
-                  >
-                    Field
-                  </th>
-                  <th
-                    style={{
-                      textAlign: "left",
-                      borderBottom: "1px solid #1f2937",
-                      padding: "4px 2px",
-                    }}
-                  >
-                    Value
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {Object.entries(result).map(([k, v]) => (
-                  <tr key={k}>
-                    <td
-                      style={{
-                        padding: "4px 2px",
-                        borderBottom: "1px solid #020617",
-                        opacity: 0.85,
-                      }}
-                    >
-                      {k}
-                    </td>
-                    <td
-                      style={{
-                        padding: "4px 2px",
-                        borderBottom: "1px solid #020617",
-                      }}
-                    >
-                      {v === null ? <span style={{ opacity: 0.6 }}>null</span> : String(v)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div style={{ fontSize: 14, lineHeight: 1.6 }}>
+              {Object.entries(result).map(([k, v]) => (
+                <div key={k}>
+                  <span style={{ fontWeight: 600 }}>{k}:</span>{" "}
+                  {v === null ? (
+                    <span style={{ color: "#9ca3af" }}>null</span>
+                  ) : (
+                    String(v)
+                  )}
+                </div>
+              ))}
+            </div>
           )}
         </div>
-      </section>
+      </div>
     </main>
   );
 }

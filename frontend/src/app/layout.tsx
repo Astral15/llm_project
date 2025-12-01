@@ -13,16 +13,17 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         style={{
           margin: 0,
           minHeight: "100vh",
-          background: "#020617",
-          color: "#e5e5e5",
-          fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+          background: "#f3f4f6", // light gray
+          color: "#111827",
+          fontFamily:
+            'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
         }}
       >
         <div
           style={{
             maxWidth: 960,
             margin: "0 auto",
-            padding: "24px 16px 48px",
+            padding: "32px 16px 48px",
           }}
         >
           <header
