@@ -1,25 +1,15 @@
 "use client";
 
-import { FormEvent, useState, useEffect } from "react";
+import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { login } from "@/lib/api";
+import { register } from "@/lib/api";
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const router = useRouter();
-
-  const [justRegistered, setJustRegistered] = useState(false);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href);
-      if (url.searchParams.get("registered") === "1") {
-        setJustRegistered(true);
-      }
-    }
-  }, []);
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,13 +19,15 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const token = await login(username, password);
-      if (!token) throw new Error("No token returned");
+      if (password !== passwordConfirm) {
+        throw new Error("Passwords do not match");
+      }
 
-      localStorage.setItem("token", token);
-      router.push("/");
+      await register(username, password, passwordConfirm);
+
+      router.push("/login?registered=1");
     } catch (err: any) {
-      setError(err?.message ?? "Incorrect username or password");
+      setError(err?.message ?? "Failed to register");
     } finally {
       setLoading(false);
     }
@@ -43,22 +35,7 @@ export default function LoginPage() {
 
   return (
     <main style={{ maxWidth: 420, margin: "0 auto" }}>
-      <h1 style={{ fontSize: 24, marginBottom: 8 }}>Login</h1>
-
-      {justRegistered && (
-        <div
-          style={{
-            background: "#1e40af",
-            border: "1px solid #1e3a8a",
-            padding: "6px 8px",
-            borderRadius: 6,
-            marginBottom: 12,
-            fontSize: 13,
-          }}
-        >
-          ✔ Account created successfully. You can now log in.
-        </div>
-      )}
+      <h1 style={{ fontSize: 24, marginBottom: 8 }}>Register</h1>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
         <a
@@ -68,9 +45,9 @@ export default function LoginPage() {
             textAlign: "center",
             padding: "8px 0",
             borderRadius: 6,
-            border: "1px solid #475569",
-            background: "#1e293b",
-            color: "#e2e8f0",
+            border: "1px solid #334155",
+            background: "#0f172a",
+            color: "#94a3b8",
             fontWeight: 500,
             textDecoration: "none",
           }}
@@ -85,9 +62,9 @@ export default function LoginPage() {
             textAlign: "center",
             padding: "8px 0",
             borderRadius: 6,
-            border: "1px solid #334155",
-            background: "#0f172a",
-            color: "#94a3b8",
+            border: "1px solid #475569",
+            background: "#1e293b",
+            color: "#e2e8f0",
             fontWeight: 500,
             textDecoration: "none",
           }}
@@ -96,7 +73,10 @@ export default function LoginPage() {
         </a>
       </div>
 
-      <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <form
+        onSubmit={onSubmit}
+        style={{ display: "flex", flexDirection: "column", gap: 12 }}
+      >
         <input
           placeholder="Username"
           value={username}
@@ -124,6 +104,20 @@ export default function LoginPage() {
           }}
         />
 
+        <input
+          placeholder="Confirm Password"
+          type="password"
+          value={passwordConfirm}
+          onChange={(e) => setPasswordConfirm(e.target.value)}
+          style={{
+            padding: "8px 10px",
+            borderRadius: 6,
+            border: "1px solid #1f2937",
+            background: "#020617",
+            color: "#e5e5e5",
+          }}
+        />
+
         {error && (
           <div style={{ color: "#f97373", fontSize: 13 }}>{error}</div>
         )}
@@ -142,7 +136,7 @@ export default function LoginPage() {
             opacity: loading ? 0.7 : 1,
           }}
         >
-          {loading ? "Logging in…" : "Login"}
+          {loading ? "Creating..." : "Create Account"}
         </button>
       </form>
     </main>
