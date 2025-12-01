@@ -1,43 +1,42 @@
+import os
 from functools import lru_cache
 
-from pydantic_settings import BaseSettings
+def _env(k: str, default: str | None = None) -> str:
+    v = os.getenv(k, default)
+    if v is None:
+        raise RuntimeError(f"Missing env: {k}")
+    return v
 
+class Settings:
+    # project
+    PROJECT_NAME = "LLM Structured Output API"
 
-class Settings(BaseSettings):
-    PROJECT_NAME: str = "LLM Structured Output API"
-
-    # --- Database ---
-    # You can override this via env if you want, but this default works in docker
-    SQLALCHEMY_DATABASE_URL: str = (
-        "postgresql+psycopg2://appuser:apppassword@db:5432/llm_app_db"
+    # db
+    SQLALCHEMY_DATABASE_URL = _env(
+        "SQLALCHEMY_DATABASE_URL",
+        "postgresql+psycopg2://appuser:apppassword@db:5432/llm_app_db",
     )
 
-    # --- JWT / Auth ---
-    JWT_SECRET_KEY: str = "super-secret-change-me"  # overridden by env in docker
-    JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 day
+    # jwt
+    JWT_SECRET_KEY = _env("JWT_SECRET_KEY", "change-me-in-prod")
+    JWT_ALGORITHM = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))
 
-    # --- MinIO / S3 storage ---
-    # These MUST exist because images.py uses them
-    MINIO_ENDPOINT: str = "http://minio:9000"
-    MINIO_BUCKET: str = "llm-images"
-    MINIO_ROOT_USER: str = "minioadmin"
-    MINIO_ROOT_PASSWORD: str = "minioadmin"
+    # storage (MinIO / S3-compatible)
+    MINIO_ENDPOINT = _env("MINIO_ENDPOINT", "http://minio:9000")
+    MINIO_BUCKET = _env("MINIO_BUCKET", "llm-images")
+    MINIO_ROOT_USER = _env("MINIO_ROOT_USER", "minioadmin")
+    MINIO_ROOT_PASSWORD = _env("MINIO_ROOT_PASSWORD", "minioadmin")
 
-    # (optional) S3-style names if you want to use them elsewhere
-    S3_ENDPOINT: str | None = None
-    S3_BUCKET: str | None = None
-    S3_ACCESS_KEY: str | None = None
-    S3_SECRET_KEY: str | None = None
+    # optional S3-style names
+    S3_ENDPOINT = os.getenv("S3_ENDPOINT") or MINIO_ENDPOINT
+    S3_BUCKET = os.getenv("S3_BUCKET") or MINIO_BUCKET
+    S3_ACCESS_KEY = os.getenv("S3_ACCESS_KEY") or MINIO_ROOT_USER
+    S3_SECRET_KEY = os.getenv("S3_SECRET_KEY") or MINIO_ROOT_PASSWORD
 
-    # --- LLM ---
-    GEMINI_API_KEY: str = ""
-    GEMINI_MODEL_NAME: str = "gemini-2.0-flash"
-
-    class Config:
-        # used only for local dev; in docker, real env vars override these
-        env_file = ".env"
-
+    # LLM
+    GEMINI_API_KEY = _env("GEMINI_API_KEY", "")
+    GEMINI_MODEL_NAME = os.getenv("GEMINI_MODEL_NAME", "gemini-2.0-flash")
 
 @lru_cache
 def get_settings() -> Settings:

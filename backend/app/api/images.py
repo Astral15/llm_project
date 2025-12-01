@@ -1,46 +1,35 @@
-from uuid import uuid4
 import hashlib
+from uuid import uuid4
 
 import boto3
 from botocore.client import Config
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
 from app.api.auth import get_current_user
+from app.core.config import get_settings
 from app.db.session import get_db
+from app.models.image import Image
 from app.models.user import User
-from app.models.image import Image  # you will create this model
 
 router = APIRouter(prefix="/images", tags=["images"])
 
-
-def get_s3_client():
-    """
-    Create a boto3 client for MinIO (S3-compatible).
-    """
-    settings = get_settings()
+def _s3_client():
+    s = get_settings()
     return boto3.client(
         "s3",
-        endpoint_url=settings.MINIO_ENDPOINT,
-        aws_access_key_id=settings.MINIO_ROOT_USER,
-        aws_secret_access_key=settings.MINIO_ROOT_PASSWORD,
+        endpoint_url=s.MINIO_ENDPOINT,
+        aws_access_key_id=s.MINIO_ROOT_USER,
+        aws_secret_access_key=s.MINIO_ROOT_PASSWORD,
         config=Config(signature_version="s3v4"),
         region_name="us-east-1",
     )
 
-
-def ensure_bucket_exists(s3_client, bucket_name: str):
-    """
-    Make sure the bucket exists. If not, create it.
-    Called lazily on first upload.
-    """
+def _ensure_bucket(s3, bucket: str):
     try:
-        s3_client.head_bucket(Bucket=bucket_name)
+        s3.head_bucket(Bucket=bucket)
     except Exception:
-        # If head_bucket fails (e.g., 404), try to create the bucket
-        s3_client.create_bucket(Bucket=bucket_name)
-
+        s3.create_bucket(Bucket=bucket)
 
 @router.post("/upload")
 async def upload_image(
@@ -48,98 +37,47 @@ async def upload_image(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Upload an image to MinIO with per-user deduplication.
-
-    - Only accepts image/* mime types.
-    - Computes SHA256 hash of the content.
-    - If the same user has already uploaded an image with the same hash,
-      we DO NOT upload again; we just return the existing Image record.
-    - Otherwise, we store the object in MinIO and create an Image row.
-    """
-    settings = get_settings()
-
-    # 1) Basic validation
     if not file.content_type or not file.content_type.startswith("image/"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only image uploads are allowed",
-        )
+        raise HTTPException(400, "Only image/* uploads are allowed")
 
-    # Read all bytes (OK for typical image sizes in this project)
-    file_bytes = await file.read()
+    data = await file.read()
+    if not data:
+        raise HTTPException(400, "Empty file")
 
-    if not file_bytes:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Empty file",
-        )
+    h = hashlib.sha256(data).hexdigest()
 
-    # 2) Compute content hash for deduplication
-    content_hash = hashlib.sha256(file_bytes).hexdigest()
-
-    # 3) Check if this user already has this image
     existing = (
         db.query(Image)
-        .filter(
-            Image.user_id == current_user.id,
-            Image.content_hash == content_hash,
-        )
+        .filter(Image.user_id == current_user.id, Image.content_hash == h)
         .first()
     )
     if existing:
-        # Per-user dedup hit: return existing record, no new upload
-        return {
-            "id": existing.id,
-            "url": existing.url,
-            "content_hash": existing.content_hash,
-            "deduplicated": True,
-        }
+        return {"id": existing.id, "url": existing.url, "content_hash": h, "deduplicated": True}
 
-    # 4) Prepare S3 / MinIO client and bucket
-    s3_client = get_s3_client()
-    bucket_name = settings.MINIO_BUCKET
-    ensure_bucket_exists(s3_client, bucket_name)
+    s = get_settings()
+    s3 = _s3_client()
+    _ensure_bucket(s3, s.MINIO_BUCKET)
 
-    # 5) Build object key: group by user + keep extension if any
-    original_filename = file.filename or "upload"
-    # simple extension extraction
-    dot_idx = original_filename.rfind(".")
-    ext = original_filename[dot_idx:] if dot_idx != -1 else ""
-    object_key = f"user_{current_user.id}/{content_hash}_{uuid4().hex}{ext}"
+    name = file.filename or "upload"
+    dot = name.rfind(".")
+    ext = name[dot:] if dot != -1 else ""
+    key = f"user_{current_user.id}/{h}_{uuid4().hex}{ext}"
 
-    # 6) Upload to MinIO
     try:
-        s3_client.put_object(
-            Bucket=bucket_name,
-            Key=object_key,
-            Body=file_bytes,
+        s3.put_object(
+            Bucket=s.MINIO_BUCKET,
+            Key=key,
+            Body=data,
             ContentType=file.content_type,
         )
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to upload to MinIO: {e}",
-        )
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, f"MinIO upload failed: {e}")
 
-    # 7) Construct URL (path-style, works inside Docker network)
-    object_url = f"{settings.MINIO_ENDPOINT}/{bucket_name}/{object_key}"
+    url = f"{s.MINIO_ENDPOINT}/{s.MINIO_BUCKET}/{key}"
 
-    # 8) Persist Image metadata in DB
-    image = Image(
-        user_id=current_user.id,
-        storage_key=object_key,
-        url=object_url,
-        content_hash=content_hash,
-    )
-    db.add(image)
+    img = Image(user_id=current_user.id, storage_key=key, url=url, content_hash=h)
+    db.add(img)
     db.commit()
-    db.refresh(image)
+    db.refresh(img)
 
-    # 9) Return response
-    return {
-        "id": image.id,
-        "url": image.url,
-        "content_hash": image.content_hash,
-        "deduplicated": False,
-    }
+    return {"id": img.id, "url": img.url, "content_hash": h, "deduplicated": False}
